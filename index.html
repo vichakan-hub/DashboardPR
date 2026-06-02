@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <base target="_top">
+  
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard ผลการเรียน</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -1551,6 +1552,9 @@
   </div>
 
 <script>
+  const SUPABASE_URL = 'https://jiorecubzlmfhwalhrsz.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_bvvfwIdiPxyN2hYXVogVHQ_QxXE0I1_';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const GRADE_KEYS = ['4','3.5','3','2.5','2','1.5','1','0','ร','มส','ผ','มผ'];
 
   const emptyDashboardData = {
@@ -1952,90 +1956,102 @@ function bindRoomAllToggle(){
   });
 }
 
-  function loadFilterOptions(){
-    setStatus('กำลังโหลดตัวเลือกจากฐานข้อมูล...', 'info');
+async function loadFilterOptions(){
+  setStatus('กำลังโหลดตัวเลือกจากฐานข้อมูล...', 'info');
 
-    google.script.run
-      .withSuccessHandler(function(res){
-        const years = Array.isArray(res && res.years) ? res.years : [];
-        const terms = Array.isArray(res && res.terms) ? res.terms : [];
-        const classLevels = Array.isArray(res && res.class_levels) ? res.class_levels : [];
-        const learningAreas = Array.isArray(res && res.learning_areas) ? res.learning_areas : [];
-        const subjectTypes = Array.isArray(res && res.subject_types) ? res.subject_types : [];
-        roomsByClass = Array.isArray(res && res.rooms_by_class) ? res.rooms_by_class : [];
+  try{
+    const { data, error } = await supabaseClient.rpc(
+      'get_dashboard_checkbox_filter_options'
+    );
 
-        const latestYear = years.length ? String(years[0]) : '';
+    if(error) throw error;
 
-renderCheckboxGroupNoAll(
-  'yearChecks',
-  'years',
-  years.map(y => ({value: String(y), label: String(y)})),
-  {
-    defaultValues: latestYear ? [latestYear] : []
-  }
-);
+    const res = data || {};
 
-renderCheckboxGroup(
-  'termChecks',
-  'terms',
-  terms.length ? terms.map(t => ({value: String(t), label: `เทอม ${t}`})) : [
-    {value:'1', label:'เทอม 1'},
-    {value:'2', label:'เทอม 2'}
-  ],
-  {
-    selectAllId: 'selectAllTerms',
-    defaultAll: true
-  }
-);
+    const years = Array.isArray(res.years) ? res.years : [];
+    const terms = Array.isArray(res.terms) ? res.terms : [];
+    const classLevels = Array.isArray(res.class_levels) ? res.class_levels : [];
+    const learningAreas = Array.isArray(res.learning_areas) ? res.learning_areas : [];
+    const subjectTypes = Array.isArray(res.subject_types) ? res.subject_types : [];
+    roomsByClass = Array.isArray(res.rooms_by_class) ? res.rooms_by_class : [];
 
-renderCheckboxGroup(
-  'classChecks',
-  'classes',
-  classLevels.map(c => ({value: String(c), label: String(c)})),
-  {
-    selectAllId: 'selectAllClasses',
-    defaultAll: true
-  }
-);
+    const latestYear = years.length ? String(years[0]) : '';
 
-renderCheckboxGroup(
-  'areaChecks',
-  'areas',
-  learningAreas.map(a => ({value: String(a), label: String(a)})),
-  {
-    selectAllId: 'selectAllAreas',
-    defaultAll: true
-  }
-);
+    renderCheckboxGroupNoAll(
+      'yearChecks',
+      'years',
+      years.map(y => ({value: String(y), label: String(y)})),
+      {
+        defaultValues: latestYear ? [latestYear] : []
+      }
+    );
 
-renderCheckboxGroup(
-  'subjectTypeChecks',
-  'subjectTypes',
-  subjectTypes.length
-    ? subjectTypes.map(t => ({value: String(t), label: String(t)}))
-    : [
-        {value:'พื้นฐาน', label:'พื้นฐาน'},
-        {value:'เพิ่มเติม', label:'เพิ่มเติม'},
-        {value:'กิจกรรม', label:'กิจกรรม'}
+    renderCheckboxGroup(
+      'termChecks',
+      'terms',
+      terms.length ? terms.map(t => ({value: String(t), label: `เทอม ${t}`})) : [
+        {value:'1', label:'เทอม 1'},
+        {value:'2', label:'เทอม 2'}
       ],
-  {
-    selectAllId: 'selectAllSubjectTypes',
-    defaultAll: true
-  }
-);
+      {
+        selectAllId: 'selectAllTerms',
+        defaultAll: true
+      }
+    );
 
-        renderRoomOptions();
-        bindRoomAllToggle();
-        bindSubjectAllToggle();
-        updateSelectedSummary();
+    renderCheckboxGroup(
+      'classChecks',
+      'classes',
+      classLevels.map(c => ({value: String(c), label: String(c)})),
+      {
+        selectAllId: 'selectAllClasses',
+        defaultAll: true
+      }
+    );
 
-        setStatus('โหลดตัวเลือกเรียบร้อยแล้ว เลือกเงื่อนไขแล้วกด “โหลดรายวิชา” หรือ “ประมวลผล Dashboard” ได้เลย', 'success');
-      })
-      .withFailureHandler(function(err){
-        setStatus(`โหลดตัวเลือกไม่สำเร็จ: ${err && err.message ? err.message : err}`, 'error');
-      })
-      .getDashboardCheckboxFilterOptions();
+    renderCheckboxGroup(
+      'areaChecks',
+      'areas',
+      learningAreas.map(a => ({value: String(a), label: String(a)})),
+      {
+        selectAllId: 'selectAllAreas',
+        defaultAll: true
+      }
+    );
+
+    renderCheckboxGroup(
+      'subjectTypeChecks',
+      'subjectTypes',
+      subjectTypes.length
+        ? subjectTypes.map(t => ({value: String(t), label: String(t)}))
+        : [
+            {value:'พื้นฐาน', label:'พื้นฐาน'},
+            {value:'เพิ่มเติม', label:'เพิ่มเติม'},
+            {value:'กิจกรรม', label:'กิจกรรม'}
+          ],
+      {
+        selectAllId: 'selectAllSubjectTypes',
+        defaultAll: true
+      }
+    );
+
+    renderRoomOptions();
+    bindRoomAllToggle();
+    bindSubjectAllToggle();
+    updateSelectedSummary();
+
+    setStatus(
+      'โหลดตัวเลือกเรียบร้อยแล้ว เลือกเงื่อนไขแล้วกด “โหลดรายวิชา” หรือ “ประมวลผล Dashboard” ได้เลย',
+      'success'
+    );
+  }catch(err){
+    console.error('loadFilterOptions ERROR', err);
+    setStatus(
+      `โหลดตัวเลือกไม่สำเร็จ: ${err?.message || err}`,
+      'error'
+    );
   }
+}
 
 
 
@@ -2054,27 +2070,41 @@ function bindSubjectAllToggle(){
   };
 }
 
-  function loadSubjectOptions(){
-    const payload = buildPayload();
+async function loadSubjectOptions(){
+  const payload = buildPayload();
 
-    $('loadSubjectsBtn').disabled = true;
-    setStatus('กำลังโหลดรายวิชาตามเงื่อนไขที่เลือก...', 'info');
+  $('loadSubjectsBtn').disabled = true;
+  setStatus('กำลังโหลดรายวิชาตามเงื่อนไขที่เลือก...', 'info');
 
-    google.script.run
-      .withSuccessHandler(function(res){
-        $('loadSubjectsBtn').disabled = false;
+  try{
+    const { data, error } = await supabaseClient.rpc(
+      'get_dashboard_checkbox_subject_options',
+      {
+        p_filters: payload
+      }
+    );
 
-        subjectOptions = Array.isArray(res && res.subjects) ? res.subjects : [];
-        renderSubjectOptions(subjectOptions);
+    if(error) throw error;
 
-        setStatus(`โหลดรายวิชาเรียบร้อย พบ ${fmtInt(subjectOptions.length)} วิชา`, 'success');
-      })
-      .withFailureHandler(function(err){
-        $('loadSubjectsBtn').disabled = false;
-        setStatus(`โหลดรายวิชาไม่สำเร็จ: ${err && err.message ? err.message : err}`, 'error');
-      })
-      .getDashboardCheckboxSubjectOptions(payload);
+    const res = data || {};
+
+    subjectOptions = Array.isArray(res.subjects) ? res.subjects : [];
+    renderSubjectOptions(subjectOptions);
+
+    setStatus(
+      `โหลดรายวิชาเรียบร้อย พบ ${fmtInt(subjectOptions.length)} วิชา`,
+      'success'
+    );
+  }catch(err){
+    console.error('loadSubjectOptions ERROR', err);
+    setStatus(
+      `โหลดรายวิชาไม่สำเร็จ: ${err?.message || err}`,
+      'error'
+    );
+  }finally{
+    $('loadSubjectsBtn').disabled = false;
   }
+}
 
   function renderSubjectOptions(subjects){
     const box = $('subjectChecks');
@@ -2207,42 +2237,53 @@ if($('allRoomsCheck')) $('allRoomsCheck').checked = true;
     };
   }
 
-  function processDashboard(){
-    const payload = buildPayload();
+async function processDashboard(){
+  const payload = buildPayload();
 
-    $('processBtn').disabled = true;
-    setStatus('กำลังประมวลผล Dashboard จาก Supabase RPC...', 'info');
+  $('processBtn').disabled = true;
+  setStatus('กำลังประมวลผล Dashboard จาก Supabase RPC...', 'info');
 
-    google.script.run
-      .withSuccessHandler(function(res){
-        $('processBtn').disabled = false;
+  try{
+    const { data, error } = await supabaseClient.rpc(
+      'get_dashboard_checkbox_summary',
+      {
+        p_filters: payload
+      }
+    );
 
-        const raw = res && res.data ? res.data : res;
-        dashboardData = normalizeDashboardData(raw);
+    if(error) throw error;
 
-        renderDashboard();
-        document.getElementById('dashboardResult')?.scrollIntoView({
-  behavior: 'smooth',
-  block: 'start'
-});
+    const raw = data && data.data ? data.data : data;
+    dashboardData = normalizeDashboardData(raw);
 
-        const label = dashboardData.countLabel || 'จำนวนผลการเรียน';
-        const unit = dashboardData.countUnit || 'รายการ';
+    renderDashboard();
 
-        setStatus(
-          `ประมวลผลสำเร็จ ${label} ${fmtInt(dashboardData.totalStudents)} ${unit} · นักเรียนไม่ซ้ำ ${fmtInt(dashboardData.uniqueStudents)} คน`,
-          'success'
-        );
-      })
-      .withFailureHandler(function(err){
-        $('processBtn').disabled = false;
-        dashboardData = deepClone(emptyDashboardData);
-        renderDashboard();
+    document.getElementById('dashboardResult')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
 
-        setStatus(`ประมวลผลไม่สำเร็จ: ${err && err.message ? err.message : err}`, 'error');
-      })
-      .getDashboardCheckboxSummary(payload);
+    const label = dashboardData.countLabel || 'จำนวนผลการเรียน';
+    const unit = dashboardData.countUnit || 'รายการ';
+
+    setStatus(
+      `ประมวลผลสำเร็จ ${label} ${fmtInt(dashboardData.totalStudents)} ${unit} · นักเรียนไม่ซ้ำ ${fmtInt(dashboardData.uniqueStudents)} คน`,
+      'success'
+    );
+  }catch(err){
+    console.error('processDashboard ERROR', err);
+
+    dashboardData = deepClone(emptyDashboardData);
+    renderDashboard();
+
+    setStatus(
+      `ประมวลผลไม่สำเร็จ: ${err?.message || err}`,
+      'error'
+    );
+  }finally{
+    $('processBtn').disabled = false;
   }
+}
 
   function buildSummaryFromDashboard(){
     return {
