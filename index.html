@@ -1967,35 +1967,37 @@ function isTimeoutError(err){
          msg.includes('statement timeout');
 }
 
-async function rpcWithRetry(fn, options = {}){
-  const retries = options.retries ?? 2;
-  const delayMs = options.delayMs ?? 900;
+async function rpcUntilSuccess(fn, options = {}){
+  const delayMs = options.delayMs ?? 1200;
+  const maxDelayMs = options.maxDelayMs ?? 5000;
 
-  let lastError = null;
+  let attempt = 0;
 
-  for(let i = 0; i <= retries; i++){
+  while(true){
     try{
       return await fn();
     }catch(err){
-      lastError = err;
+      attempt++;
 
-      if(!isTimeoutError(err) || i === retries){
+      // ถ้าไม่ใช่ timeout ให้ throw ทันที เพราะ retry ไปก็ไม่น่าหาย
+      if(!isTimeoutError(err)){
         throw err;
       }
 
-      setStatus(`โหลดข้อมูลช้า กำลังลองใหม่ครั้งที่ ${i + 1}...`, 'warning');
-      await sleep(delayMs * (i + 1));
+      // ไม่บอกว่าโหลดช้า ให้บอกแบบสุภาพ/กลาง ๆ
+      setStatus('กำลังเตรียมข้อมูลตัวเลือก กรุณารอสักครู่...', 'info');
+
+      const wait = Math.min(delayMs * attempt, maxDelayMs);
+      await sleep(wait);
     }
   }
-
-  throw lastError;
 }
 
 async function loadFilterOptions(){
   setStatus('กำลังโหลดตัวเลือกจากฐานข้อมูล...', 'info');
 
   try{
-const { data } = await rpcWithRetry(async () => {
+const { data } = await rpcUntilSuccess(async () => {
   const { data, error } = await supabaseClient.rpc(
     'get_dashboard_checkbox_filter_options'
   );
@@ -2004,8 +2006,8 @@ const { data } = await rpcWithRetry(async () => {
 
   return { data };
 }, {
-  retries: 2,
-  delayMs: 1000
+  delayMs: 1200,
+  maxDelayMs: 5000
 });
 
     const res = data || {};
@@ -2088,11 +2090,10 @@ const { data } = await rpcWithRetry(async () => {
     );
   }catch(err){
     console.error('loadFilterOptions ERROR', err);
-const msg = isTimeoutError(err)
-  ? 'ฐานข้อมูลตอบสนองช้า กรุณากดโหลดหน้าใหม่อีกครั้ง หรือรอสักครู่แล้วลองใหม่'
-  : `โหลดตัวเลือกไม่สำเร็จ: ${err?.message || err}`;
-
-setStatus(msg, 'error');
+setStatus(
+  `โหลดตัวเลือกไม่สำเร็จ: ${err?.message || err}`,
+  'error'
+);
   }
 }
 
