@@ -2627,20 +2627,83 @@ function renderLearningAreaKpis(){
   const box = $('learningAreaKpiGrid');
   if(!box) return;
 
-const excludedAreas = [
-  'กิจกรรมพัฒนาผู้เรียน',
-  'การศึกษาค้นคว้าด้วยตนเอง'
-];
+  /*
+    แสดงเฉพาะ 8 กลุ่มสาระหลักเท่านั้น
+    ไทย คณิต วิทย์ สังคม พละ ศิลปะ การงาน ต่างประเทศ
+  */
+  const allowedAreaOrder = [
+    'ภาษาไทย',
+    'คณิตศาสตร์',
+    'วิทยาศาสตร์และเทคโนโลยี',
+    'สังคมศึกษา ศาสนา และวัฒนธรรม',
+    'สุขศึกษาและพลศึกษา',
+    'ศิลปะ',
+    'การงานอาชีพ',
+    'ภาษาต่างประเทศ'
+  ];
 
-const items = Array.isArray(dashboardData.learningAreaKpis)
-  ? dashboardData.learningAreaKpis.filter(item => {
-      const area = String(item.learningArea || '').trim();
-      return !excludedAreas.includes(area);
-    })
-  : [];
+  function normalizeAreaName(name){
+    const text = String(name || '').replace(/\s+/g, '').trim();
+
+    if(text.includes('ภาษาไทย')) return 'ภาษาไทย';
+    if(text.includes('คณิต')) return 'คณิตศาสตร์';
+    if(text.includes('วิทย')) return 'วิทยาศาสตร์และเทคโนโลยี';
+    if(text.includes('สังคม')) return 'สังคมศึกษา ศาสนา และวัฒนธรรม';
+    if(text.includes('สุขศึกษา') || text.includes('พลศึกษา')) return 'สุขศึกษาและพลศึกษา';
+    if(text.includes('ศิลปะ')) return 'ศิลปะ';
+    if(text.includes('การงาน')) return 'การงานอาชีพ';
+    if(text.includes('ต่างประเทศ') || text.includes('ภาษาอังกฤษ')) return 'ภาษาต่างประเทศ';
+
+    return '';
+  }
+
+  const rawItems = Array.isArray(dashboardData.learningAreaKpis)
+    ? dashboardData.learningAreaKpis
+    : [];
+
+  const itemMap = new Map();
+
+  rawItems.forEach(item => {
+    const normalizedName = normalizeAreaName(item.learningArea);
+    if(!normalizedName) return;
+
+    const old = itemMap.get(normalizedName);
+
+    if(!old){
+      itemMap.set(normalizedName, {
+        learningArea: normalizedName,
+        targetGrade: Number(item.targetGrade || 0),
+        totalResults: Number(item.totalResults || 0),
+        passedResults: Number(item.passedResults || 0),
+        failedResults: Number(item.failedResults || 0)
+      });
+      return;
+    }
+
+    old.totalResults += Number(item.totalResults || 0);
+    old.passedResults += Number(item.passedResults || 0);
+    old.failedResults += Number(item.failedResults || 0);
+
+    if(!old.targetGrade && item.targetGrade){
+      old.targetGrade = Number(item.targetGrade || 0);
+    }
+  });
+
+  const items = allowedAreaOrder
+    .map(areaName => itemMap.get(areaName))
+    .filter(Boolean)
+    .map(item => {
+      const total = Number(item.totalResults || 0);
+      const passed = Number(item.passedResults || 0);
+
+      return {
+        ...item,
+        passPercent: total ? (passed / total) * 100 : 0
+      };
+    });
 
   if(!items.length){
-    box.innerHTML = `<div class="text-muted">ยังไม่มีข้อมูล KPI ตามกลุ่มสาระ</div>`;
+    box.innerHTML = `<div class="text-muted">ยังไม่มีข้อมูล KPI ตาม 8 กลุ่มสาระหลัก</div>`;
     return;
   }
 
@@ -2652,7 +2715,7 @@ const items = Array.isArray(dashboardData.learningAreaKpis)
     return `
       <div class="area-kpi-card ${cls}">
         <div class="area-kpi-name">${escapeHtmlText(item.learningArea)}</div>
-        <div class="area-kpi-target">เป้าหมาย: เกรด ≥ ${fmtNumber(item.targetGrade, 1)}</div>
+        <div class="area-kpi-target">เป้าหมาย: เกรด ≥ ${fmtNumber(item.targetGrade || 3, 1)}</div>
         <div class="area-kpi-value">${fmtNumber(pct)}%</div>
         <div class="area-kpi-sub">
           ผ่าน ${fmtInt(item.passedResults)} / ${fmtInt(item.totalResults)} รายการ
