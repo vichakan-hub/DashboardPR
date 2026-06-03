@@ -1956,15 +1956,57 @@ function bindRoomAllToggle(){
   });
 }
 
+  function sleep(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isTimeoutError(err){
+  const msg = String(err?.message || err || '').toLowerCase();
+  return msg.includes('timeout') ||
+         msg.includes('canceling statement') ||
+         msg.includes('statement timeout');
+}
+
+async function rpcWithRetry(fn, options = {}){
+  const retries = options.retries ?? 2;
+  const delayMs = options.delayMs ?? 900;
+
+  let lastError = null;
+
+  for(let i = 0; i <= retries; i++){
+    try{
+      return await fn();
+    }catch(err){
+      lastError = err;
+
+      if(!isTimeoutError(err) || i === retries){
+        throw err;
+      }
+
+      setStatus(`โหลดข้อมูลช้า กำลังลองใหม่ครั้งที่ ${i + 1}...`, 'warning');
+      await sleep(delayMs * (i + 1));
+    }
+  }
+
+  throw lastError;
+}
+
 async function loadFilterOptions(){
   setStatus('กำลังโหลดตัวเลือกจากฐานข้อมูล...', 'info');
 
   try{
-    const { data, error } = await supabaseClient.rpc(
-      'get_dashboard_checkbox_filter_options'
-    );
+const { data } = await rpcWithRetry(async () => {
+  const { data, error } = await supabaseClient.rpc(
+    'get_dashboard_checkbox_filter_options'
+  );
 
-    if(error) throw error;
+  if(error) throw error;
+
+  return { data };
+}, {
+  retries: 2,
+  delayMs: 1000
+});
 
     const res = data || {};
 
@@ -2046,10 +2088,11 @@ async function loadFilterOptions(){
     );
   }catch(err){
     console.error('loadFilterOptions ERROR', err);
-    setStatus(
-      `โหลดตัวเลือกไม่สำเร็จ: ${err?.message || err}`,
-      'error'
-    );
+const msg = isTimeoutError(err)
+  ? 'ฐานข้อมูลตอบสนองช้า กรุณากดโหลดหน้าใหม่อีกครั้ง หรือรอสักครู่แล้วลองใหม่'
+  : `โหลดตัวเลือกไม่สำเร็จ: ${err?.message || err}`;
+
+setStatus(msg, 'error');
   }
 }
 
