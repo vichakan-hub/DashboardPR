@@ -2301,10 +2301,10 @@ async function rpcUntilSuccess(fn, options = {}){
         throw err;
       }
 
-      setStatus(
-        `${statusText} กำลังลองใหม่ (${attempt + 1}/${maxAttempts})`,
-        'info'
-      );
+setStatus(
+  statusText,
+  'info'
+);
 
       const wait = Math.min(delayMs * attempt, maxDelayMs);
       await sleep(wait);
@@ -2647,12 +2647,12 @@ async function processDashboard(){
 
       return { data };
 
-    }, {
-      maxAttempts: 3,
-      delayMs: 1500,
-      maxDelayMs: 4000,
-      statusText: 'การประมวลผลใช้เวลามากกว่าปกติ'
-    });
+}, {
+  maxAttempts: 10,
+  delayMs: 1500,
+  maxDelayMs: 4000,
+  statusText: 'กำลังประมวลผล Dashboard กรุณารอสักครู่...'
+});
 
     const raw = data && data.data ? data.data : data;
     dashboardData = normalizeDashboardData(raw);
