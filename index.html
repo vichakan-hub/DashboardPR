@@ -2626,16 +2626,38 @@ async function processDashboard(){
   const payload = buildPayload();
 
   $('processBtn').disabled = true;
-  setStatus('กำลังประมวลผล Dashboard จาก Supabase RPC...', 'info');
+  setStatus('กำลังประมวลผล Dashboard...', 'info');
 
   try{
-'get_dashboard_checkbox_summary',
+
+    const { data } = await rpcUntilSuccess(async () => {
+
+      const { data, error } = await supabaseClient.rpc(
+        'get_dashboard_checkbox_summary',
+        {
+          p_filters: payload
+        }
+      );
+
+      if(error) throw error;
+
+      return { data };
+
+    }, {
+      maxAttempts: 3,
+      delayMs: 1500,
+      maxDelayMs: 4000,
+      statusText: 'การประมวลผลใช้เวลามากกว่าปกติ'
+    });
 
     const raw = data && data.data ? data.data : data;
     dashboardData = normalizeDashboardData(raw);
 
     const applied = describeSelection();
-    appliedFilterSummary = `ปี ${applied.years} · ${applied.terms} · ${applied.classes} · ${applied.types} · ${applied.areas} · ${applied.subjects} · ${applied.rooms}`;
+
+    appliedFilterSummary =
+      `ปี ${applied.years} · ${applied.terms} · ${applied.classes} · ` +
+      `${applied.types} · ${applied.areas} · ${applied.subjects} · ${applied.rooms}`;
 
     renderDashboard();
     closeFilterOverlay();
@@ -2652,19 +2674,25 @@ async function processDashboard(){
       `ประมวลผลสำเร็จ ${label} ${fmtInt(dashboardData.totalStudents)} ${unit} · นักเรียนไม่ซ้ำ ${fmtInt(dashboardData.uniqueStudents)} คน`,
       'success'
     );
+
   }catch(err){
+
     console.error('processDashboard ERROR', err);
 
     dashboardData = deepClone(emptyDashboardData);
     appliedFilterSummary = 'ยังไม่ได้ประมวลผล';
+
     renderDashboard();
 
     setStatus(
       `ประมวลผลไม่สำเร็จ: ${err?.message || err}`,
       'error'
     );
+
   }finally{
+
     $('processBtn').disabled = false;
+
   }
 }
 
