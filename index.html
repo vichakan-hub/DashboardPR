@@ -454,6 +454,47 @@
       border:1px solid #ffe0aa;
     }
 
+    /* สถานะด้านล่างของ Filter Overlay ก่อนปุ่มยกเลิก */
+    .action-status{
+      margin:0 2px 0 0;
+      min-height:40px;
+      max-width:560px;
+      padding:8px 12px;
+      border-radius:14px;
+      font-size:13px;
+      line-height:1.35;
+      align-items:center;
+      gap:8px;
+      box-shadow:none;
+    }
+
+    .action-status.info,
+    .action-status.success,
+    .action-status.error,
+    .action-status.warning{
+      display:inline-flex;
+    }
+
+    .action-status::before{
+      flex:0 0 auto;
+      width:22px;
+      height:22px;
+      border-radius:999px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-family:'Sarabun',sans-serif;
+      font-size:13px;
+      font-weight:800;
+      line-height:1;
+      background:rgba(255,255,255,.72);
+    }
+
+    .action-status.info::before{ content:'…'; }
+    .action-status.success::before{ content:'✓'; }
+    .action-status.warning::before{ content:'!'; }
+    .action-status.error::before{ content:'×'; }
+
     .selected-summary{
       display:flex;
       flex-wrap:wrap;
@@ -1386,6 +1427,22 @@
   border-color:#ffd2cf;
 }
 
+.filter-modal .builder-actions{
+  position:sticky;
+  bottom:-22px;
+  z-index:19;
+  margin:14px -22px -22px;
+  padding:12px 22px 18px;
+  background:rgba(248,251,255,.97);
+  border-top:1px solid #dbe7f3;
+  backdrop-filter:blur(10px);
+}
+
+.filter-modal .actions-right{
+  margin-left:auto;
+  justify-content:flex-end;
+}
+
 body.filter-modal-open{
   overflow:hidden;
 }
@@ -1435,6 +1492,31 @@ body.filter-modal-open{
 
   .filter-modal-head-actions .badge{
     display:none;
+  }
+
+  .filter-modal .builder-actions{
+    bottom:-16px;
+    margin:14px -16px -16px;
+    padding:10px 16px 16px;
+  }
+
+  .filter-modal .actions-left,
+  .filter-modal .actions-right{
+    width:100%;
+  }
+
+  .filter-modal .actions-right{
+    justify-content:stretch;
+  }
+
+  .filter-modal .action-status{
+    flex:1 1 100%;
+    max-width:none;
+    width:100%;
+  }
+
+  .filter-modal .actions-right button{
+    flex:1 1 auto;
   }
 }
 
@@ -1489,8 +1571,6 @@ body.filter-modal-open{
           <button class="filter-close-btn" id="closeFilterBtn" type="button" aria-label="ปิดหน้าต่างเลือกข้อมูล">×</button>
         </div>
       </div>
-
-      <div id="dashboardStatus" class="status info">กำลังโหลดตัวเลือก...</div>
 
 <div class="builder-grid">
   <div class="filter-card">
@@ -1594,6 +1674,7 @@ body.filter-modal-open{
   <button class="btn-secondary" id="defaultBtn" type="button">กลับสู่ค่าเริ่มต้น</button>
 </div>
         <div class="actions-right">
+          <div id="dashboardStatus" class="status action-status info" role="status" aria-live="polite">กำลังโหลดตัวเลือก...</div>
           <button class="btn-secondary" id="cancelFilterBtn" type="button">ยกเลิก</button>
           <button class="btn-success" id="processBtn" type="button">ประมวลผล Dashboard</button>
         </div>
