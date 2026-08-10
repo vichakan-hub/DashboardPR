@@ -455,18 +455,20 @@
     }
 
     /* สถานะด้านล่างของ Filter Overlay ก่อนปุ่มยกเลิก */
-    .action-status{
-      margin:0 2px 0 0;
-      min-height:40px;
-      max-width:560px;
-      padding:8px 12px;
-      border-radius:14px;
-      font-size:13px;
-      line-height:1.35;
-      align-items:center;
-      gap:8px;
-      box-shadow:none;
-    }
+.action-status{
+  margin:0;
+  height:44px;
+  max-width:560px;
+  padding:0 14px;
+  border-radius:14px;
+  font-size:13px;
+  line-height:1.2;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  box-shadow:none;
+  white-space:nowrap;
+}
 
     .action-status.info,
     .action-status.success,
@@ -1441,6 +1443,8 @@
 .filter-modal .actions-right{
   margin-left:auto;
   justify-content:flex-end;
+  align-items:center;
+  flex-wrap:nowrap;
 }
 
 body.filter-modal-open{
