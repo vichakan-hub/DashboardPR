@@ -2275,22 +2275,32 @@ function isTimeoutError(err){
 async function rpcUntilSuccess(fn, options = {}){
   const delayMs = options.delayMs ?? 1200;
   const maxDelayMs = options.maxDelayMs ?? 5000;
+  const maxAttempts = options.maxAttempts ?? 3;
+  const statusText = options.statusText || 'กำลังประมวลผล กรุณารอสักครู่...';
 
   let attempt = 0;
 
-  while(true){
+  while(attempt < maxAttempts){
     try{
       return await fn();
+
     }catch(err){
       attempt++;
 
-      // ถ้าไม่ใช่ timeout ให้ throw ทันที เพราะ retry ไปก็ไม่น่าหาย
+      // Error อื่นที่ไม่ใช่ timeout ไม่ต้อง retry
       if(!isTimeoutError(err)){
         throw err;
       }
 
-      // ไม่บอกว่าโหลดช้า ให้บอกแบบสุภาพ/กลาง ๆ
-      setStatus('กำลังเตรียมข้อมูลตัวเลือก กรุณารอสักครู่...', 'info');
+      // ครบจำนวนครั้งแล้ว ส่ง error กลับไป
+      if(attempt >= maxAttempts){
+        throw err;
+      }
+
+      setStatus(
+        `${statusText} กำลังลองใหม่ (${attempt + 1}/${maxAttempts})`,
+        'info'
+      );
 
       const wait = Math.min(delayMs * attempt, maxDelayMs);
       await sleep(wait);
@@ -2619,14 +2629,7 @@ async function processDashboard(){
   setStatus('กำลังประมวลผล Dashboard จาก Supabase RPC...', 'info');
 
   try{
-    const { data, error } = await supabaseClient.rpc(
-      'get_dashboard_checkbox_summary',
-      {
-        p_filters: payload
-      }
-    );
-
-    if(error) throw error;
+'get_dashboard_checkbox_summary',
 
     const raw = data && data.data ? data.data : data;
     dashboardData = normalizeDashboardData(raw);
