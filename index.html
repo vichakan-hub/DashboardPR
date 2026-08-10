@@ -1913,11 +1913,11 @@ let gradeChart, meanChart, donutChart;
     return escapeHtmlText(text);
   }
 
-  function setStatus(text, type='info'){
-    const node = $('dashboardStatus');
-    node.className = `status ${type || 'info'}`;
-    node.textContent = text || '';
-  }
+function setStatus(text, type='info'){
+  const node = $('dashboardStatus');
+  node.className = `status action-status ${type || 'info'}`;
+  node.textContent = text || '';
+}
 
   function deepClone(obj){
     return JSON.parse(JSON.stringify(obj));
